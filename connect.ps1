@@ -16,6 +16,36 @@
         if ((Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash -ne '51854de6498a34b28e9102ff81fe5ffe23c0623a756ffe7d150b3f491dbf5627') { throw 'Hash incorrecto. Descarga rechazada.' }
         Unblock-File -LiteralPath $zip
         Expand-Archive -LiteralPath $zip -DestinationPath $kit
+        $name = 'NebulaConnectServiceLab'
+        $root = Join-Path ([Environment]::GetFolderPath('ProgramFiles')) $name
+        $data = Join-Path ([Environment]::GetFolderPath('CommonApplicationData')) $name
+        $existing = Get-CimInstance Win32_Service -Filter "Name='$name'"
+        if ($existing) {
+            $exe = "$name.exe"
+            $expectedPath = '"' + (Join-Path $root $exe) + '"'
+            if ($existing.StartName -ne "NT SERVICE\$name" -or $existing.PathName -ne $expectedPath) {
+                throw 'Existe otro registro de servicio con ese nombre. Revisar cuenta y ruta.'
+            }
+            foreach ($dir in @($root, $data, (Join-Path $data 'state'), (Join-Path $root 'runtime'), (Join-Path $root 'runtime/connect-service'))) {
+                $item = Get-Item -LiteralPath $dir -Force
+                if (!$item.PSIsContainer -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw "Directorio no reconocido: $dir" }
+            }
+            $payloads = @((Get-Item -LiteralPath (Join-Path $kit $exe))) + @(Get-ChildItem -LiteralPath (Join-Path $kit 'runtime') -File -Recurse)
+            foreach ($payload in $payloads) {
+                $relative = $payload.FullName.Substring($kit.Length + 1)
+                $installed = Get-Item -LiteralPath (Join-Path $root $relative) -Force
+                if ($installed.PSIsContainer -or ($installed.Attributes -band [IO.FileAttributes]::ReparsePoint) -or
+                    (Get-FileHash -LiteralPath $installed.FullName).Hash -ne (Get-FileHash -LiteralPath $payload.FullName).Hash) {
+                    throw "Archivo instalado distinto del paquete solicitado: $relative"
+                }
+            }
+            Write-Output "Nebula Connect $Version ya esta instalado. Estado: $($existing.State)."
+            $existing | Select-Object Name,State,StartMode,StartName,ProcessId
+            return
+        }
+        if ((Test-Path -LiteralPath $root) -or (Test-Path -LiteralPath $data)) {
+            throw 'Hay carpetas de Nebula Connect pero falta el registro del servicio. Se requiere inspeccion.'
+        }
         $file = Join-Path $kit "$Action-service.ps1"
         & "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File $file
         if ($LASTEXITCODE -ne 0) { throw "Fallo la operacion $Action; revisa el error anterior." }
