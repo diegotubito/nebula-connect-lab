@@ -1,6 +1,6 @@
 & {
     param([string]$Version = '0.3.0-rc.1')
-    if ($Version -cnotin @('0.3.0-rc.1','cli')) { throw "Version del servicio no publicada: $Version. Disponible: 0.3.0-rc.1." }
+    if ($Version -cnotin @('0.3.0-rc.1','cli','h3-lab')) { throw "Version del servicio no publicada: $Version. Disponible: 0.3.0-rc.1." }
     $Action = 'install'
     $ErrorActionPreference = 'Stop'
     if ($env:OS -ne 'Windows_NT' -or $env:PROCESSOR_ARCHITECTURE -ne 'AMD64' -or ![Environment]::Is64BitProcess) { throw 'Se requiere Windows x64 y Windows PowerShell de 64 bits.' }
@@ -11,10 +11,15 @@
     try {
         $zip = Join-Path $folder 'pilot.zip'
         $kit = Join-Path $folder 'kit'
-        if ($Version -eq 'cli') {
+        if ($Version -in @('cli','h3-lab')) {
             $url = 'https://github.com/diegotubito/nebula-connect-lab/releases/download/connect-cli-rc.2/Nebula-Connect-configurar.zip'
+            $expected = '462da4a560a71490258634b6af95178ee64506c69bdc108560f4a5efd003165d'
+            if ($Version -eq 'h3-lab') {
+                $url = 'https://github.com/diegotubito/nebula-connect-lab/releases/download/connect-h3-rc.1/Nebula-Connect-configurar.zip'
+                $expected = '8e6821c42d746915989fd83b7758cdb57c8f8c057641c2c34d52a9ef5a3348bf'
+            }
             Invoke-WebRequest -UseBasicParsing $url -OutFile $zip
-            if ((Get-FileHash -LiteralPath $zip).Hash -ne '462da4a560a71490258634b6af95178ee64506c69bdc108560f4a5efd003165d') { throw 'Kit de configuracion no reconocido.' }
+            if ((Get-FileHash -LiteralPath $zip).Hash -ne $expected) { throw 'Kit de configuracion no reconocido.' }
             Unblock-File -LiteralPath $zip
             Expand-Archive -LiteralPath $zip -DestinationPath $kit
             & "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File (Join-Path $kit 'install-cli.ps1')
