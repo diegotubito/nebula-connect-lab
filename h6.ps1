@@ -9,6 +9,7 @@
         $zip = Join-Path $dir 'rehearsal.zip'
         Invoke-WebRequest -UseBasicParsing 'https://github.com/diegotubito/nebula-connect-lab/releases/download/h6-lab.1/rehearsal.zip' -OutFile $zip
         if ((Get-FileHash -LiteralPath $zip).Hash -ine '0d3419824d6e2f17e4befb1c675cea33cef5a9ba1541113f4f9067901a6f0461') { throw 'H6 package hash mismatch.' }
+        Unblock-File -LiteralPath $zip
         Expand-Archive -LiteralPath $zip -DestinationPath "$dir/kit"
         & "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$dir/kit/lab.ps1"
         if ($LASTEXITCODE) { throw 'Windows rehearsal did not complete.' }
