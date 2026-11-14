@@ -1,5 +1,6 @@
-# Run interactively on the enrolled home lab PC. All paths belong to the Windows lab service.
 & {
+# Run interactively on the enrolled home lab PC. All paths belong to the Windows lab service.
+$rollbackProbe = {
     $ErrorActionPreference = 'Stop'
     $principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
     if (!$principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'Abri PowerShell como administrador.' }
@@ -62,4 +63,19 @@
         if ($drainHandle) { $drainHandle.Dispose() }
         try { if ($kitRoot -and (Test-Path $kitRoot)) { Remove-Item -LiteralPath $kitRoot -Recurse -Force } } finally { $lock.Dispose() }
     }
+}
+
+    # The interactive shell may be Restricted. Use the same child-process
+    # policy as the released installer so the verified local library can load.
+    $ErrorActionPreference = 'Stop'
+    $principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
+    if (!$principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'Abri PowerShell como administrador.' }
+    $folder = Join-Path ([Environment]::GetFolderPath('ProgramFiles')) ('NebulaRollback-' + [guid]::NewGuid())
+    New-Item -Path $folder -ItemType Directory | Out-Null
+    try {
+        $script = Join-Path $folder 'probe.ps1'
+        [IO.File]::WriteAllText($script, $rollbackProbe.ToString())
+        & "$env:SystemRoot/System32/WindowsPowerShell/v1.0/powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File $script
+        if ($LASTEXITCODE -ne 0) { throw 'La prueba no termino. Revisa el primer error de PowerShell.' }
+    } finally { Remove-Item -LiteralPath $folder -Recurse -Force }
 }
