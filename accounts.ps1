@@ -9,8 +9,8 @@
         & "$env:SystemRoot/System32/icacls.exe" $dir /inheritance:r /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' '*S-1-5-11:(OI)(CI)RX' | Out-Null
         if ($LASTEXITCODE) { throw 'Could not secure rehearsal directory.' }
         $zip = Join-Path $dir 'rehearsal.zip'
-        Invoke-WebRequest -UseBasicParsing 'https://github.com/diegotubito/nebula-connect-lab/releases/download/h6-accounts.3/accounts.zip' -OutFile $zip
-        if ((Get-FileHash -LiteralPath $zip).Hash -ine '9949d0067f49bdeffd71f88a90c8f5fd28b5a0f1e3363f666f68ed8f8bbe15a7') { throw 'H6 package hash mismatch.' }
+        Invoke-WebRequest -UseBasicParsing 'https://github.com/diegotubito/nebula-connect-lab/releases/download/h6-accounts.4/accounts.zip' -OutFile $zip
+        if ((Get-FileHash -LiteralPath $zip).Hash -ine '26e41858976a5c3070ec8b309401b25f4e4eff37201cbfa688919128145544c4') { throw 'H6 package hash mismatch.' }
         Unblock-File -LiteralPath $zip
         $kit = Join-Path $dir 'kit'
         Expand-Archive -LiteralPath $zip -DestinationPath $kit
