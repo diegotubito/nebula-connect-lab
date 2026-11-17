@@ -14,6 +14,13 @@
         Unblock-File -LiteralPath $zip
         $kit = Join-Path $dir 'kit'
         Expand-Archive -LiteralPath $zip -DestinationPath $kit
+        $managed = Join-Path ([Environment]::GetFolderPath('ProgramFiles')) 'NebulaConnectAdopted'
+        $worker = 'runtime/connect-service/visit-worker.mjs'
+        if ((Test-Path "$managed/$worker") -and (Get-FileHash "$managed/$worker").Hash -ieq '8552c345a99b150d01dfae7ffcdb10cdc38dc75fefd24de5b76fb1aec2402124') {
+            if (Test-Path "$managed/updates/transaction.json") { throw 'Connect update recovery is pending. Wait for the scheduled checker before retrying.' }
+            if ((Get-FileHash "$managed/runtime/connect-service/visit-worker.original.mjs").Hash -ine (Get-FileHash "$kit/$worker").Hash) { throw 'Baseline worker verification failed.' }
+            Copy-Item "$managed/$worker" "$kit/$worker" -Force
+        }
         $entry = (Get-Item -LiteralPath (Join-Path $kit 'visit.ps1')).FullName
         & "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -NoLogo -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File $entry adopt
         if ($LASTEXITCODE) { throw 'Visit operation did not complete. Read the preceding diagnostic.' }
